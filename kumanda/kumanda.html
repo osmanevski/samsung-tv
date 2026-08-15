@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TV Kumanda</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --zemin:  #0d0f14;
+    --panel:  #171a22;
+    --tus:    #232732;
+    --tus-ac: #323847;
+    --yazi:   #e8eaf0;
+    --soluk:  #7c8496;
+    --vurgu:  #6ea8fe;
+    --kirmizi:#e8484f;
+    --yesil:  #3ecf7a;
+  }
+  body {
+    background: var(--zemin); color: var(--yazi); min-height: 100vh;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 1.2rem 1rem 4rem; gap: 0.9rem;
+    user-select: none;
+  }
+
+  /* --- baslik ------------------------------------------------------- */
+  header { width: 100%; max-width: 360px; display: flex; align-items: center; gap: 0.6rem; }
+  header h1 { font-size: 0.95rem; font-weight: 700; letter-spacing: 0.22em; }
+  #durum {
+    margin-left: auto; display: flex; align-items: center; gap: 0.45rem;
+    font-size: 0.7rem; color: var(--soluk); letter-spacing: 0.06em;
+  }
+  #isik {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--soluk); transition: background 0.3s, box-shadow 0.3s;
+  }
+  #isik.acik { background: var(--yesil); box-shadow: 0 0 8px var(--yesil); }
+  #isik.hata { background: var(--kirmizi); box-shadow: 0 0 8px var(--kirmizi); }
+
+  /* --- panel ve tuslar ----------------------------------------------- */
+  .panel {
+    width: 100%; max-width: 360px; background: var(--panel);
+    border-radius: 20px; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  }
+  .satir { display: flex; gap: 0.55rem; }
+  .satir > * { flex: 1; }
+
+  button {
+    font: inherit; color: var(--yazi); background: var(--tus); border: 0;
+    border-radius: 12px; padding: 0.7rem 0.4rem; cursor: pointer;
+    font-size: 0.78rem; letter-spacing: 0.04em;
+    transition: background 0.12s, transform 0.08s;
+  }
+  button:hover { background: var(--tus-ac); }
+  button:active, button.basildi { background: var(--vurgu); color: #0d0f14; transform: scale(0.94); }
+  button.guc { background: rgba(232,72,79,0.14); color: var(--kirmizi); font-weight: 700; }
+  button.guc:hover { background: rgba(232,72,79,0.26); }
+  button.kucuk { font-size: 0.68rem; padding: 0.55rem 0.3rem; color: var(--soluk); }
+  button.kucuk:hover { color: var(--yazi); }
+
+  /* --- yon tuslari ---------------------------------------------------- */
+  .yon {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;
+    place-items: stretch; margin: 0.2rem 0;
+  }
+  .yon button { aspect-ratio: 1; font-size: 1.2rem; border-radius: 16px; }
+  .yon .bosluk { visibility: hidden; }
+  .yon .ok {
+    border-radius: 50%; background: var(--vurgu); color: #0d0f14;
+    font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em;
+  }
+  .yon .ok:hover { background: #8bbaff; }
+
+  /* --- ses / kanal yan yana ------------------------------------------- */
+  .ciftli { display: flex; gap: 0.55rem; }
+  .rokce { flex: 1; display: flex; flex-direction: column; gap: 0.35rem;
+           background: rgba(0,0,0,0.22); border-radius: 14px; padding: 0.35rem; }
+  .rokce span { text-align: center; font-size: 0.6rem; color: var(--soluk);
+                letter-spacing: 0.16em; padding: 0.15rem 0; }
+  .rokce button { background: transparent; font-size: 1rem; padding: 0.5rem; }
+  .rokce button:hover { background: var(--tus); }
+
+  /* --- alt kisim: metin, adres, uygulama ------------------------------ */
+  .kutu { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 0.5rem; }
+  .girdi { display: flex; gap: 0.5rem; }
+  input {
+    flex: 1; min-width: 0; font: inherit; font-size: 0.82rem;
+    background: var(--panel); color: var(--yazi);
+    border: 1px solid #2b303c; border-radius: 12px; padding: 0.65rem 0.8rem;
+    user-select: text;
+  }
+  input:focus { outline: none; border-color: var(--vurgu); }
+  input::placeholder { color: #5c6474; }
+  .girdi button { flex: 0 0 auto; padding: 0.65rem 1rem; }
+
+  details { width: 100%; max-width: 360px; }
+  summary {
+    list-style: none; cursor: pointer; font-size: 0.72rem; color: var(--soluk);
+    letter-spacing: 0.12em; padding: 0.45rem 0.2rem;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary:hover { color: var(--yazi); }
+  .rakamlar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.4rem; }
+  .rakamlar button { font-size: 1rem; padding: 0.8rem 0; }
+
+  /* --- bildirim ------------------------------------------------------- */
+  #bildirim {
+    position: fixed; bottom: 1.1rem; left: 50%; transform: translate(-50%, 1.5rem);
+    background: #262b36; color: var(--yazi); font-size: 0.78rem;
+    padding: 0.6rem 1.1rem; border-radius: 999px; white-space: nowrap;
+    max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
+    opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  #bildirim.acik { opacity: 1; transform: translate(-50%, 0); }
+  #bildirim.hata { background: #4a1f22; color: #ffb4b7; }
+
+  .ipucu { font-size: 0.66rem; color: #5c6474; text-align: center;
+           max-width: 360px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>KUMANDA</h1>
+  <div id="durum"><span id="isik"></span><span id="durum-yazi">bağlanılıyor…</span></div>
+</header>
+
+<div class="panel">
+  <div class="satir">
+    <button class="guc" data-tus="POWER">⏻ KAPAT</button>
+    <button data-uyandir>☀ AÇ</button>
+  </div>
+
+  <div class="satir">
+    <button data-tus="SOURCE">KAYNAK</button>
+    <button data-tus="HOME">ANA EKRAN</button>
+    <button data-tus="MENU">MENÜ</button>
+  </div>
+
+  <div class="yon">
+    <div class="bosluk"></div>
+    <button data-tus="UP" data-tekrar>▲</button>
+    <div class="bosluk"></div>
+    <button data-tus="LEFT" data-tekrar>◀</button>
+    <button class="ok" data-tus="ENTER">OK</button>
+    <button data-tus="RIGHT" data-tekrar>▶</button>
+    <div class="bosluk"></div>
+    <button data-tus="DOWN" data-tekrar>▼</button>
+    <div class="bosluk"></div>
+  </div>
+
+  <div class="satir">
+    <button data-tus="RETURN">↩ GERİ</button>
+    <button data-tus="EXIT">ÇIKIŞ</button>
+  </div>
+
+  <div class="ciftli">
+    <div class="rokce">
+      <button data-tus="VOLUP" data-tekrar>＋</button>
+      <span>SES</span>
+      <button data-tus="VOLDOWN" data-tekrar>－</button>
+    </div>
+    <div class="rokce">
+      <button data-tus="MUTE">🔇</button>
+      <span>SESSİZ</span>
+      <button data-tus="CHLIST">☰</button>
+    </div>
+    <div class="rokce">
+      <button data-tus="CHUP" data-tekrar>＋</button>
+      <span>KANAL</span>
+      <button data-tus="CHDOWN" data-tekrar>－</button>
+    </div>
+  </div>
+
+  <div class="satir">
+    <button data-tus="REWIND">⏪</button>
+    <button data-tus="PLAY">▶</button>
+    <button data-tus="PAUSE">⏸</button>
+    <button data-tus="STOP">⏹</button>
+    <button data-tus="FF">⏩</button>
+  </div>
+
+  <div class="satir">
+    <button class="kucuk" data-tus="INFO">BİLGİ</button>
+    <button class="kucuk" data-tus="GUIDE">REHBER</button>
+    <button class="kucuk" data-tus="TOOLS">ARAÇLAR</button>
+    <button class="kucuk" data-tus="SUBTITLE">ALTYAZI</button>
+  </div>
+</div>
+
+<details>
+  <summary>▸ RAKAM TUŞLARI</summary>
+  <div class="rakamlar">
+    <button data-tus="1">1</button><button data-tus="2">2</button><button data-tus="3">3</button>
+    <button data-tus="4">4</button><button data-tus="5">5</button><button data-tus="6">6</button>
+    <button data-tus="7">7</button><button data-tus="8">8</button><button data-tus="9">9</button>
+    <div></div><button data-tus="0">0</button><div></div>
+  </div>
+</details>
+
+<div class="kutu">
+  <div class="satir">
+    <button data-uygulama="Netflix">NETFLIX</button>
+    <button data-uygulama="YouTube">YOUTUBE</button>
+  </div>
+  <form class="girdi" data-yol="/url">
+    <input name="deger" placeholder="TV'de aç: adres…" autocomplete="off">
+    <button type="submit">AÇ</button>
+  </form>
+  <form class="girdi" data-yol="/metin">
+    <input name="deger" placeholder="Açık kutuya yaz…" autocomplete="off">
+    <button type="submit">YAZ</button>
+  </form>
+</div>
+
+<p class="ipucu">
+  Klavye: ok tuşları · Enter = OK · Backspace = geri · Esc = çıkış<br>
+  + − ses · PgUp/PgDn kanal · M sessiz · 0-9 kanal numarası
+</p>
+
+<div id="bildirim"></div>
+
+<script>
+const isik      = document.getElementById('isik');
+const durumYazi = document.getElementById('durum-yazi');
+const bildirim  = document.getElementById('bildirim');
+
+let bildirimZaman = null;
+function haber(metin, hataMi = false) {
+  bildirim.textContent = metin;
+  bildirim.classList.toggle('hata', hataMi);
+  bildirim.classList.add('acik');
+  clearTimeout(bildirimZaman);
+  bildirimZaman = setTimeout(() => bildirim.classList.remove('acik'), hataMi ? 4000 : 1400);
+}
+
+// üç hal: yeşil = TV'ye bağlı, kırmızı = sorun var, gri = henüz bağlanılmadı
+function isikDurumu(hal, yazi) {
+  isik.className = hal;
+  durumYazi.textContent = yazi;
+}
+
+async function yolla(yol, govde) {
+  try {
+    const y = await fetch(yol, { method: 'POST', body: govde });
+    const c = await y.json();
+    if (!c.tamam) { isikDurumu('hata', 'sorun var'); haber(c.mesaj, true); return false; }
+    isikDurumu('acik', 'bağlı');
+    return c.mesaj;
+  } catch (e) {
+    isikDurumu('hata', 'sunucu kapalı');
+    haber('sunucuya ulaşılamadı — sunucu.py çalışıyor mu?', true);
+    return false;
+  }
+}
+
+// --- tus basma ---------------------------------------------------------
+function tusla(ad, dugme) {
+  if (dugme) {
+    dugme.classList.add('basildi');
+    setTimeout(() => dugme.classList.remove('basildi'), 120);
+  }
+  yolla('/tus', ad);
+}
+
+// basili tutunca tekrarla (ses, kanal, yon tuslari)
+const GECIKME = 450, ARALIK = 220;
+document.querySelectorAll('button[data-tus]').forEach(d => {
+  const ad = d.dataset.tus;
+  if (d.hasAttribute('data-tekrar')) {
+    let ilk = null, surekli = null;
+    const dur = () => { clearTimeout(ilk); clearInterval(surekli); ilk = surekli = null; };
+    d.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      tusla(ad, d);
+      ilk = setTimeout(() => { surekli = setInterval(() => tusla(ad), ARALIK); }, GECIKME);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(o => d.addEventListener(o, dur));
+  } else {
+    d.addEventListener('click', () => tusla(ad, d));
+  }
+});
+
+document.querySelectorAll('button[data-uygulama]').forEach(d => {
+  d.addEventListener('click', async () => {
+    const m = await yolla('/uygulama', d.dataset.uygulama);
+    if (m) haber(m);
+  });
+});
+
+document.querySelector('button[data-uyandir]').addEventListener('click', async () => {
+  const m = await yolla('/uyandir', '');
+  if (m) haber(m + ' — TV birkaç saniyede açılır');
+});
+
+document.querySelectorAll('form[data-yol]').forEach(f => {
+  f.addEventListener('submit', async e => {
+    e.preventDefault();
+    const kutu = f.querySelector('input');
+    const deger = kutu.value.trim();
+    if (!deger) return;
+    const m = await yolla(f.dataset.yol, deger);
+    if (m) { haber(m); kutu.value = ''; }
+  });
+});
+
+// --- klavye ------------------------------------------------------------
+const KLAVYE = {
+  ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT',
+  Enter: 'ENTER', Backspace: 'RETURN', Escape: 'EXIT',
+  '+': 'VOLUP', '=': 'VOLUP', '-': 'VOLDOWN', m: 'MUTE', M: 'MUTE',
+  PageUp: 'CHUP', PageDown: 'CHDOWN', ' ': 'PAUSE', Home: 'HOME',
+};
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.metaKey || e.ctrlKey || e.altKey) return;
+  const ad = KLAVYE[e.key] || (/^[0-9]$/.test(e.key) ? e.key : null);
+  if (!ad) return;
+  e.preventDefault();
+  const dugme = document.querySelector(`button[data-tus="${ad}"]`);
+  tusla(ad, dugme);
+});
+
+// --- durum ------------------------------------------------------------
+async function durumSor() {
+  try {
+    const c = await (await fetch('/durum')).json();
+    if (c.bagli)      isikDurumu('acik', 'bağlı');
+    else if (c.mesaj) isikDurumu('hata', c.mesaj);
+    else              isikDurumu('', 'hazır — ' + c.ip);
+  } catch (e) {
+    isikDurumu('hata', 'sunucu kapalı');
+  }
+}
+durumSor();
+setInterval(durumSor, 5000);
+</script>
+</body>
+</html>

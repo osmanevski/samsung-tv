@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>IPTV</title>
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+<!-- AVPlay videoyu bu nesnenin alanina, web katmaninin ARKASINDAKI donanim
+     duzlemine cizer. Sayfa zemini opak olursa video gorunmez. -->
+<object id="oynatici" type="application/avplayer"></object>
+
+<!-- Acilis ekrani: goruntu gelene kadar siyah zemin uzerinde logo.
+     Video web katmaninin arkasinda oldugu icin bu katman kalkmadan goruntu gorunmez. -->
+<div id="acilis">
+  <img id="acilis-logo" src="logo.png" alt="">
+  <div id="acilis-yazi">yukleniyor…</div>
+</div>
+
+<!-- Sag ust kose logosu -->
+<img id="logo" src="logo.png" alt="">
+
+<!-- Kumandadan kanal numarasi girisi -->
+<div id="numara">
+  <div id="numara-rakam"></div>
+  <div id="numara-ad"></div>
+</div>
+
+<!-- Kanal degisiminde kisa sure gorunen alt bilgi cubugu -->
+<div id="bilgi">
+  <div id="bilgi-ad"></div>
+  <div id="bilgi-alt">
+    <span id="bilgi-grup"></span>
+    <span id="durum-satir"></span>
+    <span id="onceki-ipucu"></span>
+  </div>
+  <!-- Yalnizca VOD'da gorunur; canli yayinda sure kavrami yok -->
+  <div id="ilerleme">
+    <span id="sure-simdi">0:00</span>
+    <span id="cubuk"><span id="cubuk-dolu"></span></span>
+    <span id="sure-toplam">0:00</span>
+  </div>
+</div>
+
+<!-- OK / yon tuslariyla acilan kanal listesi -->
+<div id="liste-katman">
+  <div id="liste-ust">
+    <span id="liste-baslik">Kanallar</span>
+    <span id="liste-sayac"></span>
+  </div>
+  <!-- Arama kutusu: odaklaninca TV kendi ekran klavyesini aciyor -->
+  <div id="arama-kutu">
+    <input id="arama" type="text" placeholder="kanal ara…" autocomplete="off">
+    <div id="arama-ipucu">Yazdiktan sonra ASAGI ile listeye gec</div>
+  </div>
+
+  <!-- Ust duzey bolumler: Canli / Filmler / Diziler. MAVI tus ile degisir -->
+  <div id="bolumler"></div>
+
+  <!-- Dis kap gorus alani, ic kap kayan serit: secili sekme her zaman gorunsun -->
+  <div id="gruplar"><div id="gruplar-ic"></div></div>
+  <ul id="liste"></ul>
+  <div id="liste-ipucu">MAVI bolum &nbsp;·&nbsp; &#9664; &#9654; grup &nbsp;·&nbsp; OK sec &nbsp;·&nbsp; YESIL ara &nbsp;·&nbsp; SARI favori &nbsp;·&nbsp; KIRMIZI yenile</div>
+</div>
+
+<!-- webapis (AVPlay dahil) bu script olmadan tanimsiz kalir -->
+<script src="$WEBAPIS/webapis/webapis.js"></script>
+<script src="m3u.js"></script>
+<script src="playlist.js"></script>
+<script src="uygulama.js"></script>
+</body>
+</html>

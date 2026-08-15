@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPTV Kanal Yonetimi</title>
+<style>
+  :root {
+    --zemin: #0b0d12; --kart: #141821; --cizgi: #232936; --cizgi2: #313a4c;
+    --metin: #e8ecf4; --soluk: #93a0b8; --sonuk: #6b7689;
+    --kirmizi: #e0322c; --yesil: #4ade80; --sari: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--zemin); color: var(--metin);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  }
+
+  header {
+    position: sticky; top: 0; z-index: 20;
+    padding: 14px 24px; background: var(--zemin);
+    border-bottom: 1px solid var(--cizgi);
+  }
+  .ust { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h1 { font-size: 17px; margin: 0; margin-right: 6px; }
+  .sayaclar { display: flex; gap: 18px; margin-right: auto; font-size: 14px; }
+  .sayac b { font-variant-numeric: tabular-nums; }
+  .sayac.uyari b { color: var(--sari); }
+
+  button {
+    padding: 7px 14px; border: 1px solid var(--cizgi2); border-radius: 8px;
+    background: var(--kart); color: var(--metin); font-size: 14px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: #4a566c; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button.ana { background: var(--kirmizi); border-color: var(--kirmizi); font-weight: 600; }
+  button.mini { padding: 3px 8px; font-size: 12px; }
+  /* Silme geri alinamaz; digerlerinden gorsel olarak ayrilsin */
+  button.tehlike { color: #ff8b86; border-color: rgba(224, 50, 44, 0.45); }
+  button.tehlike:hover:not(:disabled) {
+    background: rgba(224, 50, 44, 0.16); border-color: var(--kirmizi);
+  }
+
+  input[type=text], input[type=search], input[type=url], textarea, select {
+    padding: 7px 11px; border: 1px solid var(--cizgi2); border-radius: 8px;
+    background: var(--kart); color: var(--metin); font: inherit;
+  }
+  input:focus, textarea:focus, select:focus { outline: 1px solid var(--kirmizi); }
+
+  .filtreler {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cizgi);
+  }
+  #ara { flex: 1; min-width: 220px; }
+  select { max-width: 260px; }
+
+  main { padding: 16px 24px 90px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--sonuk); font-weight: 600;
+    padding: 8px; border-bottom: 1px solid var(--cizgi); white-space: nowrap;
+  }
+  td { padding: 5px 8px; border-bottom: 1px solid var(--cizgi); vertical-align: middle; }
+  tr:hover td { background: rgba(255,255,255,0.025); }
+  tr.secili-satir td { background: rgba(224,50,44,0.07); }
+
+  td input[type=text] { width: 100%; border-color: transparent; background: transparent; padding: 5px 7px; }
+  td input[type=text]:hover { border-color: var(--cizgi); }
+  td input[type=text]:focus { background: var(--kart); border-color: var(--kirmizi); }
+  input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--kirmizi); cursor: pointer; }
+
+  .c-sec { width: 40px; text-align: center; }
+  .c-sira { width: 74px; color: var(--sonuk); text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+  .c-logo { width: 48px; }
+  .c-logo img { width: 38px; height: 26px; object-fit: contain; }
+  .c-ad { width: 22%; }
+  .c-grup { width: 15%; }
+  .c-durum { width: 96px; }
+  .c-islem { width: 54px; text-align: right; }
+
+  .rozet { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px; }
+  .rozet.iyi { background: rgba(74,222,128,0.15); color: var(--yesil); }
+  .rozet.kotu { background: rgba(224,50,44,0.16); color: #ff8b86; }
+  .rozet.bekle { background: rgba(255,255,255,0.07); color: var(--sonuk); }
+  .kaynak-etiket { font-size: 11px; color: var(--sonuk); display: block; }
+
+  .sayfalama {
+    display: flex; gap: 10px; align-items: center; justify-content: center;
+    margin-top: 18px; color: var(--soluk); flex-wrap: wrap;
+  }
+  .sayfalama input { width: 90px; text-align: center; }
+  .bos { padding: 60px 0; text-align: center; color: var(--sonuk); }
+  #yukleniyor { padding: 40px 0; text-align: center; color: var(--sonuk); }
+
+  #durum {
+    position: fixed; left: 24px; bottom: 20px; z-index: 30;
+    padding: 11px 18px; border-radius: 10px; max-width: 60vw;
+    background: var(--kart); border: 1px solid var(--cizgi2);
+    opacity: 0; transition: opacity 0.25s; pointer-events: none;
+  }
+  #durum.gorunur { opacity: 1; }
+  #durum.hata { border-color: var(--kirmizi); }
+
+  dialog {
+    border: 1px solid var(--cizgi2); border-radius: 12px;
+    background: var(--kart); color: var(--metin); padding: 22px; width: min(720px, 92vw);
+  }
+  dialog::backdrop { background: rgba(0,0,0,0.7); }
+  dialog h2 { margin: 0 0 6px; font-size: 17px; }
+  dialog p { margin: 0 0 14px; color: var(--soluk); font-size: 14px; }
+  textarea { width: 100%; height: 230px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+  .dialog-alt { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+  .yardim { font-size: 13px; color: var(--sonuk); margin-top: 10px; }
+  #kaynak-tablo td, #kaynak-tablo th { font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="ust">
+    <h1>IPTV Kanal Yonetimi</h1>
+    <div class="sayaclar">
+      <span class="sayac">katalog <b id="s-katalog">–</b></span>
+      <span class="sayac" id="s-secili-kap">TV'de <b id="s-secili">–</b></span>
+      <span class="sayac">filtreye uyan <b id="s-eslesen">–</b></span>
+    </div>
+    <button id="btn-kaynaklar">Kaynaklar</button>
+    <button id="btn-kaynak">Kaynaktan cek</button>
+    <button id="btn-ekle">+ Kanal</button>
+    <button id="btn-ice">M3U yapistir</button>
+    <button id="btn-disa">Disa aktar</button>
+    <button id="btn-dene">Sayfayi denetle</button>
+  </div>
+
+  <div class="filtreler">
+    <input type="search" id="ara" placeholder="Kanal, grup, adres veya kaynak ara…">
+    <select id="grup-filtre"><option value="">Tum gruplar</option></select>
+    <select id="kaynak-filtre"><option value="">Tum kaynaklar</option></select>
+    <select id="sec-filtre">
+      <option value="">Secili / secisiz hepsi</option>
+      <option value="secili">Yalnizca TV'dekiler</option>
+      <option value="secisiz">Yalnizca TV'de olmayanlar</option>
+    </select>
+    <select id="durum-filtre">
+      <option value="">Tum durumlar</option>
+      <option value="iyi">Yalnizca calisanlar</option>
+      <option value="kotu">Yalnizca calismayanlar</option>
+    </select>
+    <span style="flex:1"></span>
+    <button class="mini" id="btn-hepsini-sec">Filtrelenenleri sec</button>
+    <button class="mini" id="btn-hicbirini-sec">Filtrelenenlerin secimini kaldir</button>
+    <button class="mini tehlike" id="btn-toplu-sil">Filtrelenenleri sil</button>
+  </div>
+</header>
+
+<main>
+  <table id="tablo">
+    <thead>
+      <tr>
+        <th class="c-sec">TV</th>
+        <th class="c-sira">#</th>
+        <th class="c-logo"></th>
+        <th class="c-ad">Ad</th>
+        <th>Adres</th>
+        <th class="c-grup">Grup</th>
+        <th class="c-durum">Durum</th>
+        <th class="c-islem"></th>
+      </tr>
+    </thead>
+    <tbody id="govde"></tbody>
+  </table>
+  <div id="yukleniyor" hidden>yukleniyor…</div>
+  <div id="bos-uyari" class="bos" hidden>Filtreye uyan kanal yok.</div>
+  <div class="sayfalama" id="sayfalama"></div>
+</main>
+
+<div id="durum"></div>
+
+<dialog id="kaynaklar-pencere">
+  <h2>Kaynaklar</h2>
+  <p>Bir kaynagi silmek, o kaynaktan gelen tum kanallari katalogdan cikarir.
+     Geri alinamaz.</p>
+  <table id="kaynak-tablo"></table>
+  <div class="dialog-alt"><button id="kaynaklar-kapat">Kapat</button></div>
+</dialog>
+
+<dialog id="kaynak-pencere">
+  <h2>Kaynaktan cek</h2>
+  <p>Uzak bir M3U adresi ya da Xtream <code>get.php</code> baglantisi.</p>
+  <input type="url" id="kaynak-url" style="width:100%"
+         placeholder="http://saglayici/get.php?username=…&password=…&type=m3u_plus&output=m3u8">
+  <div class="yardim">
+    Ayni adresten daha once gelen kanallar tazelenir, <b>TV isaretlerin korunur</b>.
+    Elle ekledigin kanallara dokunulmaz. Saglayicinin kaldirdigi kanallar dusurulur.
+    <br>Xtream kullaniyorsan <code>output=m3u8</code> tercih et — TV'nin oynaticisi
+    HLS'i donanimdan cozuyor, ham TS'te tokezliyor.
+  </div>
+  <div class="dialog-alt">
+    <button id="kaynak-iptal">Iptal</button>
+    <button id="kaynak-tamam" class="ana">Cek</button>
+  </div>
+</dialog>
+
+<dialog id="ice-pencere">
+  <h2>M3U yapistir</h2>
+  <p>Playlist metnini yapistir. Katalogun sonuna eklenir, TV'ye gitmesi icin ayrica isaretle.</p>
+  <textarea id="ice-metin" placeholder="#EXTM3U&#10;#EXTINF:-1 group-title=&quot;News&quot;,Ornek Kanal&#10;https://ornek/playlist.m3u8"></textarea>
+  <div class="dialog-alt">
+    <button id="ice-iptal">Iptal</button>
+    <button id="ice-tamam" class="ana">Ice aktar</button>
+  </div>
+</dialog>
+
+<dialog id="disa-pencere">
+  <h2>Disa aktar</h2>
+  <p>M3U dosyasi olarak indir.</p>
+  <div class="dialog-alt" style="justify-content:flex-start">
+    <button id="disa-secili" class="ana">Yalnizca TV'dekiler</button>
+    <button id="disa-tumu">Tum katalog</button>
+    <button id="disa-iptal">Iptal</button>
+  </div>
+</dialog>
+
+<script>
+'use strict';
+
+/* Butun filtreleme ve sayfalama SUNUCUDA yapilir. Katalog 250 bin kanala
+   cikabiliyor (112 MB); tarayiciya indirip burada filtrelemek calismiyordu.
+   Bu sayfa yalnizca gecerli sayfayi (100 satir) tutar.
+
+   Bunun sonucu: "Kaydet" yok, her degisiklik aninda sunucuya yazilir. */
+
+var SAYFA_BOYU = 100;
+var UYARI_SINIRI = 2000;
+
+var satirlar = [];      // yalnizca gorunen sayfa
+var sayfa = 0;
+var toplam = 0;
+var istekSirasi = 0;    // yaris durumu: sadece en son istegin yaniti cizilsin
+
+function $(s) { return document.querySelector(s); }
+
+function bildir(metin, hataMi, sure) {
+  var d = $('#durum');
+  d.textContent = metin;
+  d.className = 'gorunur' + (hataMi ? ' hata' : '');
+  clearTimeout(bildir.z);
+  bildir.z = setTimeout(function () { d.className = ''; }, sure || 3000);
+}
+
+function kacir(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function sayi(n) { return Number(n).toLocaleString('tr'); }
+
+/* "http://saglayici.example:25461/get.php?username=…" -> "saglayici.example" */
+function kaynakKisalt(url) {
+  var m = String(url).match(/^[a-z]+:\/\/([^/:]+)/i);
+  return m ? m[1] : String(url).slice(0, 40);
+}
+
+function filtre() {
+  return {
+    q: $('#ara').value.trim(),
+    grup: $('#grup-filtre').value,
+    kaynak: $('#kaynak-filtre').value,
+    sec: $('#sec-filtre').value,
+    durum: $('#durum-filtre').value
+  };
+}
+
+function istekAdresi() {
+  var f = filtre();
+  return '/api/ara?sayfa=' + sayfa + '&boyut=' + SAYFA_BOYU +
+    '&q=' + encodeURIComponent(f.q) +
+    '&grup=' + encodeURIComponent(f.grup) +
+    '&kaynak=' + encodeURIComponent(f.kaynak) +
+    '&sec=' + encodeURIComponent(f.sec) +
+    '&durum=' + encodeURIComponent(f.durum);
+}
+
+// --- Cizim ----------------------------------------------------------------
+
+function durumRozeti(kod) {
+  if (kod === null || kod === undefined) { return '<span class="rozet bekle">-</span>'; }
+  if (kod === 200) { return '<span class="rozet iyi">calisiyor</span>'; }
+  if (kod === 0) { return '<span class="rozet kotu">ulasilamadi</span>'; }
+  // Saglayici olu icerikte HTTP 200 + HTML hata sayfasi donuyor
+  if (kod === -1) { return '<span class="rozet kotu">video degil</span>'; }
+  if (kod === -2) { return '<span class="rozet bekle">zaman asimi</span>'; }
+  return '<span class="rozet kotu">' + kod + '</span>';
+}
+
+function ciz(yanit) {
+  satirlar = yanit.kanallar;
+  toplam = yanit.toplam;
+
+  $('#s-katalog').textContent = sayi(yanit.katalogToplam);
+  $('#s-secili').textContent = sayi(yanit.secili);
+  $('#s-eslesen').textContent = sayi(yanit.toplam);
+  $('#s-secili-kap').classList.toggle('uyari', yanit.secili > UYARI_SINIRI);
+  $('#s-secili-kap').title = yanit.secili > UYARI_SINIRI
+    ? UYARI_SINIRI + ' kanaldan fazlasi TV\'de kumandayla gezilemez hale gelir' : '';
+
+  var h = '';
+  satirlar.forEach(function (k, n) {
+    var kaynakEtiket = k.kaynak && k.kaynak !== 'elle'
+      ? '<span class="kaynak-etiket">' + kacir(kaynakKisalt(k.kaynak)) + '</span>' : '';
+    h += '<tr data-n="' + n + '"' + (k.sec ? ' class="secili-satir"' : '') + '>' +
+      '<td class="c-sec"><input type="checkbox" data-alan="sec"' + (k.sec ? ' checked' : '') + '></td>' +
+      '<td class="c-sira">' + sayi(k.sira) + '</td>' +
+      '<td class="c-logo">' + (k.logo
+        ? '<img src="' + kacir(k.logo) + '" alt="" onerror="this.style.display=\'none\'">' : '') + '</td>' +
+      '<td><input type="text" data-alan="ad" value="' + kacir(k.ad) + '">' + kaynakEtiket + '</td>' +
+      '<td><input type="text" data-alan="url" value="' + kacir(k.url) + '"></td>' +
+      '<td><input type="text" data-alan="grup" value="' +
+          kacir((k.gruplar || [k.grup]).join(';')) + '"></td>' +
+      '<td>' + durumRozeti(k.durum) + '</td>' +
+      '<td class="c-islem"><button class="mini tehlike" data-is="sil">sil</button></td>' +
+    '</tr>';
+  });
+  $('#govde').innerHTML = h;
+  $('#bos-uyari').hidden = satirlar.length > 0;
+  $('#tablo').hidden = satirlar.length === 0;
+
+  sayfalamaCiz();
+}
+
+function sayfalamaCiz() {
+  var sonSayfa = Math.max(0, Math.ceil(toplam / SAYFA_BOYU) - 1);
+  if (!toplam) { $('#sayfalama').innerHTML = ''; return; }
+
+  $('#sayfalama').innerHTML =
+    '<button id="ilk"' + (sayfa === 0 ? ' disabled' : '') + '>&laquo; ilk</button>' +
+    '<button id="onceki"' + (sayfa === 0 ? ' disabled' : '') + '>&larr; onceki</button>' +
+    '<span>sayfa <input type="number" id="sayfa-git" min="1" max="' + (sonSayfa + 1) +
+      '" value="' + (sayfa + 1) + '"> / ' + sayi(sonSayfa + 1) +
+      ' &middot; ' + sayi(toplam) + ' kanal</span>' +
+    '<button id="sonraki"' + (sayfa >= sonSayfa ? ' disabled' : '') + '>sonraki &rarr;</button>' +
+    '<button id="son"' + (sayfa >= sonSayfa ? ' disabled' : '') + '>son &raquo;</button>';
+
+  var git = function (n) { sayfa = Math.max(0, Math.min(sonSayfa, n)); yenile(); window.scrollTo(0, 0); };
+  $('#ilk').onclick = function () { git(0); };
+  $('#onceki').onclick = function () { git(sayfa - 1); };
+  $('#sonraki').onclick = function () { git(sayfa + 1); };
+  $('#son').onclick = function () { git(sonSayfa); };
+  $('#sayfa-git').onchange = function () { git(parseInt(this.value, 10) - 1); };
+}
+
+// --- Sunucudan veri -------------------------------------------------------
+
+function yenile() {
+  var benimSira = ++istekSirasi;
+  $('#yukleniyor').hidden = false;
+  return fetch(istekAdresi())
+    .then(function (r) { return r.json(); })
+    .then(function (y) {
+      // Hizli yazarken eski yanitlar yenisinin uzerine yazmasin
+      if (benimSira !== istekSirasi) { return; }
+      $('#yukleniyor').hidden = true;
+      ciz(y);
+    })
+    .catch(function (e) {
+      $('#yukleniyor').hidden = true;
+      bildir('Liste alinamadi: ' + e.message, true, 6000);
+    });
+}
+
+function facetYukle() {
+  return fetch('/api/facet').then(function (r) { return r.json(); }).then(function (f) {
+    UYARI_SINIRI = f.uyariSiniri || UYARI_SINIRI;
+
+    var gSecim = $('#grup-filtre').value;
+    $('#grup-filtre').innerHTML = '<option value="">Tum gruplar</option>' +
+      f.gruplar.map(function (g) {
+        return '<option value="' + kacir(g.grup) + '"' +
+               (g.grup === gSecim ? ' selected' : '') + '>' +
+               kacir(g.grup) + ' (' + sayi(g.sayi) + ')</option>';
+      }).join('');
+
+    var kSecim = $('#kaynak-filtre').value;
+    $('#kaynak-filtre').innerHTML = '<option value="">Tum kaynaklar</option>' +
+      f.kaynaklar.map(function (k) {
+        var etiket = k.kaynak === 'elle' ? 'elle eklenenler' : kaynakKisalt(k.kaynak);
+        return '<option value="' + kacir(k.kaynak) + '"' +
+               (k.kaynak === kSecim ? ' selected' : '') + '>' +
+               kacir(etiket) + ' (' + sayi(k.toplam) + ')</option>';
+      }).join('');
+  });
+}
+
+function kanalGuncelle(kanal, degisiklik) {
+  degisiklik.url = kanal.url;
+  return fetch('/api/kanal', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(degisiklik)
+  }).then(function (r) { return r.json(); }).then(function (s) {
+    if (s.hata) { throw new Error(s.hata); }
+    if (s.secili !== undefined) { $('#s-secili').textContent = sayi(s.secili); }
+    return s;
+  }).catch(function (e) {
+    bildir('Kaydedilemedi: ' + e.message, true, 6000);
+  });
+}
+
+// --- Satir olaylari -------------------------------------------------------
+
+$('#govde').addEventListener('change', function (e) {
+  if (e.target.dataset.alan !== 'sec') { return; }
+  var tr = e.target.closest('tr');
+  var kanal = satirlar[+tr.dataset.n];
+  kanal.sec = e.target.checked;
+  tr.classList.toggle('secili-satir', kanal.sec);
+  kanalGuncelle(kanal, { sec: kanal.sec });
+});
+
+// Metin alanlari: yazarken her tusta istek atma, duraklayinca gonder
+var yazmaZaman = {};
+$('#govde').addEventListener('input', function (e) {
+  var alan = e.target.dataset.alan;
+  if (!alan || alan === 'sec') { return; }
+  var tr = e.target.closest('tr');
+  var n = +tr.dataset.n;
+  var kanal = satirlar[n];
+  var deger = e.target.value;
+
+  clearTimeout(yazmaZaman[n + alan]);
+  yazmaZaman[n + alan] = setTimeout(function () {
+    var d = {};
+    if (alan === 'ad') { d.ad = deger; kanal.ad = deger; }
+    else if (alan === 'grup') {
+      d.gruplar = deger.split(';');
+      kanal.gruplar = d.gruplar;
+    } else if (alan === 'url') {
+      d.yeniUrl = deger;
+    }
+    kanalGuncelle(kanal, d).then(function () {
+      if (alan === 'url') { kanal.url = deger; }   // kimlik degisti
+    });
+  }, 700);
+});
+
+$('#govde').addEventListener('click', function (e) {
+  var btn = e.target.closest('button[data-is="sil"]');
+  if (!btn) { return; }
+  var kanal = satirlar[+e.target.closest('tr').dataset.n];
+  if (!confirm('"' + kanal.ad + '" silinecek. Geri alinamaz.')) { return; }
+  kanalGuncelle(kanal, { sil: true }).then(function () {
+    bildir('Silindi: ' + kanal.ad);
+    return Promise.all([facetYukle(), yenile()]);
+  });
+});
+
+// --- Filtreler ------------------------------------------------------------
+
+var aramaZaman = null;
+$('#ara').addEventListener('input', function () {
+  clearTimeout(aramaZaman);
+  aramaZaman = setTimeout(function () { sayfa = 0; yenile(); }, 280);
+});
+
+['#grup-filtre', '#kaynak-filtre', '#sec-filtre', '#durum-filtre'].forEach(function (s) {
+  $(s).addEventListener('change', function () { sayfa = 0; yenile(); });
+});
+
+// --- Toplu islemler -------------------------------------------------------
+// Filtreye uyan TUM kanallara uygulanir, yalnizca gorunen sayfaya degil.
+// Filtre sunucuda yeniden hesaplanir; 250 bin url gondermek gerekmiyor.
+
+function topluIslem(islem, onayMetni) {
+  if (!toplam) { bildir('Filtreye uyan kanal yok', true); return; }
+  if (onayMetni && !confirm(onayMetni.replace('{n}', sayi(toplam)))) { return; }
+
+  var dugmeler = document.querySelectorAll('.filtreler button');
+  dugmeler.forEach(function (b) { b.disabled = true; });
+
+  fetch('/api/toplu', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ islem: islem, filtre: filtre() })
+  }).then(function (r) { return r.json(); }).then(function (s) {
+    if (s.hata) { throw new Error(s.hata); }
+    bildir(sayi(s.etkilenen) + ' kanal islendi. Katalog ' + sayi(s.katalog) +
+           ', TV\'de ' + sayi(s.secili) + '.', false, 6000);
+    return Promise.all([facetYukle(), yenile()]);
+  }).catch(function (e) {
+    bildir('Islem basarisiz: ' + e.message, true, 6000);
+  }).then(function () {
+    dugmeler.forEach(function (b) { b.disabled = false; });
+  });
+}
+
+$('#btn-hepsini-sec').addEventListener('click', function () {
+  topluIslem('sec', '{n} kanal TV listesine eklenecek. Devam?');
+});
+$('#btn-hicbirini-sec').addEventListener('click', function () {
+  topluIslem('secme', '{n} kanal TV listesinden cikarilacak. Devam?');
+});
+$('#btn-toplu-sil').addEventListener('click', function () {
+  topluIslem('sil', '{n} kanal katalogdan SILINECEK.\n\nBu islem geri alinamaz.');
+});
+
+// --- Kanal ekle -----------------------------------------------------------
+
+// Tek kanal da M3U yolundan gidiyor: ayni ayristirici, ayni kayit yapisi
+function m3uEkle(metin) {
+  return fetch('/api/m3u-ice-aktar-kaydet', { method: 'POST', body: metin })
+    .then(function (r) { return r.json(); })
+    .then(function (s) {
+      if (s.hata) { throw new Error(s.hata); }
+      return Promise.all([facetYukle(), yenile()]).then(function () { return s; });
+    });
+}
+
+$('#btn-ekle').addEventListener('click', function () {
+  var ad = prompt('Kanal adi:');
+  if (!ad) { return; }
+  var url = prompt('Yayin adresi (m3u8):');
+  if (!url) { return; }
+  m3uEkle('#EXTM3U\n#EXTINF:-1 group-title="Diger",' + ad + '\n' + url)
+    .then(function () { bildir('Eklendi: ' + ad + ' — TV\'ye gitmesi icin isaretle', false, 5000); })
+    .catch(function (e) { bildir('Eklenemedi: ' + e.message, true, 6000); });
+});
+
+// --- Kaynak yonetimi ------------------------------------------------------
+
+function kaynaklariCiz(ozet) {
+  var h = '<tr><th>Kaynak</th><th style="text-align:right">Kanal</th>' +
+          '<th style="text-align:right">TV\'de</th><th></th></tr>';
+  ozet.kaynaklar.forEach(function (k) {
+    var ad = k.kaynak === 'elle' ? '<i>elle eklenenler</i>' : kacir(k.kaynak);
+    h += '<tr>' +
+      '<td style="word-break:break-all;max-width:400px">' + ad + '</td>' +
+      '<td style="text-align:right">' + sayi(k.toplam) + '</td>' +
+      '<td style="text-align:right">' + sayi(k.secili) + '</td>' +
+      '<td style="text-align:right"><button class="mini tehlike" data-kaynak="' +
+        kacir(k.kaynak) + '">sil</button></td>' +
+    '</tr>';
+  });
+  $('#kaynak-tablo').innerHTML = h;
+}
+
+function kaynaklariAc() {
+  return fetch('/api/kaynaklar').then(function (r) { return r.json(); }).then(function (ozet) {
+    kaynaklariCiz(ozet);
+    if (!$('#kaynaklar-pencere').open) { $('#kaynaklar-pencere').showModal(); }
+  });
+}
+
+$('#btn-kaynaklar').addEventListener('click', kaynaklariAc);
+$('#kaynaklar-kapat').addEventListener('click', function () { $('#kaynaklar-pencere').close(); });
+
+$('#kaynak-tablo').addEventListener('click', function (e) {
+  var btn = e.target.closest('button[data-kaynak]');
+  if (!btn) { return; }
+  var kaynak = btn.dataset.kaynak;
+  var satir = btn.closest('tr');
+  var uyari = kaynak + '\n\nBu kaynaktan gelen ' + satir.children[1].textContent +
+              ' kanal silinecek (' + satir.children[2].textContent + ' tanesi TV\'de).' +
+              '\n\nGeri alinamaz.';
+  if (!confirm(uyari)) { return; }
+
+  btn.disabled = true;
+  btn.textContent = 'siliniyor…';
+  fetch('/api/kaynak-sil', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kaynak: kaynak })
+  }).then(function (r) { return r.json(); }).then(function (s) {
+    bildir(sayi(s.silinen) + ' kanal silindi. Katalogda ' + sayi(s.katalog) +
+           ' kaldi, TV\'de ' + s.secili + '.', false, 6000);
+    return Promise.all([kaynaklariAc(), facetYukle(), yenile()]);
+  }).catch(function (e) {
+    btn.disabled = false; btn.textContent = 'sil';
+    bildir('Silinemedi: ' + e.message, true, 6000);
+  });
+});
+
+// --- Kaynaktan cek --------------------------------------------------------
+
+$('#btn-kaynak').addEventListener('click', function () { $('#kaynak-pencere').showModal(); });
+$('#kaynak-iptal').addEventListener('click', function () { $('#kaynak-pencere').close(); });
+
+$('#kaynak-tamam').addEventListener('click', function () {
+  var url = $('#kaynak-url').value.trim();
+  if (!url) { return; }
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Cekiliyor…';
+  fetch('/api/kaynak-cek', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: url })
+  }).then(function (r) {
+    return r.json().then(function (g) { return { ok: r.ok, govde: g }; });
+  }).then(function (c) {
+    if (!c.ok) { throw new Error(c.govde.hata || 'sunucu hatasi'); }
+    $('#kaynak-pencere').close();
+    bildir(sayi(c.govde.gelen) + ' kanal cekildi. Katalog ' + sayi(c.govde.katalog) +
+           '. Yeni gelenler secisiz.', false, 7000);
+    return Promise.all([facetYukle(), yenile()]);
+  }).catch(function (e) {
+    bildir('Cekilemedi: ' + e.message, true, 8000);
+  }).then(function () {
+    btn.disabled = false; btn.textContent = 'Cek';
+  });
+});
+
+// --- Ice / disa aktar -----------------------------------------------------
+
+$('#btn-ice').addEventListener('click', function () { $('#ice-pencere').showModal(); });
+$('#ice-iptal').addEventListener('click', function () { $('#ice-pencere').close(); });
+$('#ice-tamam').addEventListener('click', function () {
+  var metin = $('#ice-metin').value;
+  if (!metin.trim()) { $('#ice-pencere').close(); return; }
+  m3uEkle(metin).then(function (s) {
+    $('#ice-metin').value = '';
+    $('#ice-pencere').close();
+    bildir(sayi(s.eklenen) + ' kanal katalogda. TV\'ye gitmesi icin isaretle.', false, 5000);
+  }).catch(function (e) { bildir('Ice aktarilamadi: ' + e.message, true, 6000); });
+});
+
+$('#btn-disa').addEventListener('click', function () { $('#disa-pencere').showModal(); });
+$('#disa-iptal').addEventListener('click', function () { $('#disa-pencere').close(); });
+$('#disa-secili').addEventListener('click', function () {
+  $('#disa-pencere').close(); location.href = '/api/m3u';
+});
+$('#disa-tumu').addEventListener('click', function () {
+  $('#disa-pencere').close(); location.href = '/api/m3u?tumu=1';
+});
+
+// --- Denetle --------------------------------------------------------------
+// Yalnizca gorunen sayfa denetlenir: 250 bin kanali denemek saatler surer.
+
+$('#btn-dene').addEventListener('click', function () {
+  if (!satirlar.length) { bildir('Denetlenecek kanal yok', true); return; }
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Denetleniyor…';
+  fetch('/api/dene', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(satirlar.map(function (k) { return k.url; }))
+  }).then(function (r) { return r.json(); }).then(function (s) {
+    var iyi = 0, n = 0;
+    for (var u in s) { n++; if (s[u] === 200) { iyi++; } }
+    bildir(iyi + ' / ' + n + ' kanal calisiyor', false, 5000);
+    return yenile();
+  }).catch(function (e) {
+    bildir('Denetlenemedi: ' + e.message, true, 6000);
+  }).then(function () {
+    btn.disabled = false; btn.textContent = 'Sayfayi denetle';
+  });
+});
+
+// --- Baslangic ------------------------------------------------------------
+
+Promise.all([facetYukle(), yenile()])
+  .catch(function (e) { bildir('Yuklenemedi: ' + e.message, true, 8000); });
+</script>
+</body>
+</html>
