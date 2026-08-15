@@ -1,0 +1,34 @@
+token
+*.m3u
+*.p12
+*.pfx
+*.key
+*.pem
+*.env
+.env.*
+credentials*
+secrets*
+*sifre*
+*parola*
+*.pyc
+__pycache__/
+.DS_Store
+.claude/
+.codex/
+.agents/
+*.log
+
+# Yalnız yerelde tutulan kamera yayın aracı
+kamera/
+
+# tizen-iptv: uretilen ve gecici dosyalar
+tizen-iptv/.buildResult/
+tizen-iptv/*.wgt
+tizen-iptv/playlist.js
+
+# Kanal katalogu: 100 MB+ veri ve icinde saglayici kullanici adi/parolasi
+# duz metin geciyor. Depoya girmemeli; kaynaktan yeniden cekilebilir.
+tizen-iptv/katalog.json
+tizen-iptv/katalog.json.*
+tizen-iptv/kanallar.json
+tizen-iptv/kanallar.json.*

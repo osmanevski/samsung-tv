@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
+        id="https://example.invalid/samsung-iptv" version="1.0.0" viewmodes="maximized">
+    <!-- required_version 4.0: 2018 NU serisi Tizen 4.0 calistiriyor -->
+    <tizen:application id="PublicIptv.Iptv" package="PublicIptv" required_version="4.0"/>
+    <tizen:profile name="tv-samsung"/>
+    <content src="index.html"/>
+    <icon src="icon.png"/>
+    <name>IPTV</name>
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+    <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+    <!-- IPTV kaynaklari harici sunucularda; CORS icin gerekli -->
+    <access origin="*" subdomains="true"/>
+    <tizen:allow-navigation>*</tizen:allow-navigation>
+    <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
+</widget>
