@@ -50,7 +50,9 @@ TV'de Ayarlar → Genel → Ağ → Uzman → "Mobil Cihazla Aç" açık olmalı
 Sunucu TV'ye tek bir websocket bağlantısı kurup açık tutar, koparsa kendi
 kendine yeniden bağlanır. Varsayılan olarak sadece bu bilgisayardan erişilir.
 
-TV adresi varsayılan olarak `tv.local` kabul edilir.
-Değiştirmek için: `TV_IP=tv-adresi ./tv.py ping`
+TV adresi son çalışan IP, kayıtlı MAC/ARP, `tv.local` ve Samsung'un SSDP ağ
+duyuruları sırasıyla denenerek bulunur. Çalışan sayısal adres
+`~/.config/samsung-tv/ip` içinde önbelleğe alınır. Elle geçersiz kılmak için:
+`TV_IP=tv-adresi ./tv.py ping`
 
 Not: `token` bir kimlik bilgisidir, paylaşmayın.

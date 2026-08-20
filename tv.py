@@ -12,13 +12,115 @@ Samsung Tizen TV'yi Mac'ten kontrol et.
 Tus adlari: UP DOWN LEFT RIGHT ENTER RETURN HOME EXIT MENU
             VOLUP VOLDOWN MUTE PLAY PAUSE STOP POWER
 """
-import socket, ssl, base64, os, json, struct, sys, time, urllib.request
+import socket, ssl, base64, os, json, re, struct, subprocess, sys, time, urllib.request
+from urllib.parse import urlparse
 
-IP = os.environ.get("TV_IP", "tv.local")
 PORT = 8002
 CFG = os.path.expanduser("~/.config/samsung-tv")
 TOKEN_FILE = os.path.join(CFG, "token")
+IP_FILE = os.path.join(CFG, "ip")
+MAC_FILE = os.path.join(CFG, "mac")
 CLIENT_NAME = "Mac"
+
+
+def _dosya_oku(path):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def _ip_hatirla(ip):
+    """Calisan sayisal adresi sonraki komutlar icin onbellege al."""
+    if not ip or ip == "tv.local" or os.environ.get("TV_IP"):
+        return
+    try:
+        os.makedirs(CFG, mode=0o700, exist_ok=True)
+        with open(IP_FILE, "w") as f:
+            f.write(ip + "\n")
+        os.chmod(IP_FILE, 0o600)
+    except OSError:
+        pass
+
+
+def _arp_ip_bul():
+    """Onceden kaydedilen TV MAC adresini komsu tablosunda ara."""
+    mac = _dosya_oku(MAC_FILE).lower()
+    if not mac:
+        return ""
+    try:
+        out = subprocess.run(["arp", "-an"], capture_output=True, text=True,
+                             timeout=2, check=False).stdout.lower()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    for line in out.splitlines():
+        if mac in line:
+            match = re.search(r"\((\d+(?:\.\d+){3})\)", line)
+            if match:
+                return match.group(1)
+    return ""
+
+
+def _ssdp_ipleri_bul(timeout=1.5):
+    """Samsung'un yerel ag duyurularindan olasi TV adreslerini bul."""
+    msg = ("M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\n"
+           "MAN: \"ssdp:discover\"\r\nMX: 1\r\nST: ssdp:all\r\n\r\n").encode()
+    bulunan = []
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    try:
+        s.settimeout(timeout)
+        s.sendto(msg, ("239.255.255.250", 1900))
+        son = time.monotonic() + timeout
+        while time.monotonic() < son:
+            try:
+                data, addr = s.recvfrom(65535)
+            except socket.timeout:
+                break
+            lower = data.lower()
+            if b"samsung" not in lower and b":8001/api/v2/" not in lower:
+                continue
+            match = re.search(br"(?im)^location:\s*(\S+)", data)
+            ip = urlparse(match.group(1).decode(errors="ignore")).hostname if match else addr[0]
+            if ip and ip not in bulunan:
+                bulunan.append(ip)
+    except OSError:
+        pass
+    finally:
+        s.close()
+    return bulunan
+
+
+def _aday_ipler():
+    """Hizli/yuksek guvenli kaynaklardan baslayarak TV adreslerini uret."""
+    explicit = os.environ.get("TV_IP")
+    if explicit:
+        yield explicit
+        return
+
+    adaylar = set()
+    # Son basarili sayisal adres ve MAC eslesmesi mDNS'den daha hizli ve guvenilir.
+    for ip in (_dosya_oku(IP_FILE), _arp_ip_bul()):
+        if ip and ip not in adaylar:
+            adaylar.add(ip)
+            yield ip
+    try:
+        ip = socket.gethostbyname("tv.local")
+        if ip not in adaylar:
+            adaylar.add(ip)
+            yield ip
+    except OSError:
+        pass
+    # SSDP biraz bekletebilir; ancak yukaridaki hizli adaylar basarisizsa calisir.
+    for ip in _ssdp_ipleri_bul():
+        if ip and ip not in adaylar:
+            adaylar.add(ip)
+            yield ip
+    if not adaylar:
+        yield "tv.local"
+
+
+IP = os.environ.get("TV_IP") or _dosya_oku(IP_FILE) or "tv.local"
 
 KEYS = {
     "UP": "KEY_UP", "DOWN": "KEY_DOWN", "LEFT": "KEY_LEFT", "RIGHT": "KEY_RIGHT",
@@ -103,6 +205,7 @@ class WS:
 
 
 def connect():
+    global IP
     os.makedirs(CFG, exist_ok=True)
     token = open(TOKEN_FILE).read().strip() if os.path.exists(TOKEN_FILE) else ""
     path = f"/api/v2/channels/samsung.remote.control?name={base64.b64encode(CLIENT_NAME.encode()).decode()}"
@@ -110,10 +213,18 @@ def connect():
         path += f"&token={token}"
     else:
         print(">>> TV ekranina bak: izin penceresini kumandayla onayla.", file=sys.stderr)
-    try:
-        sock, rest = ws_connect(IP, PORT, path)
-    except (socket.timeout, OSError) as e:
-        sys.exit(f"TV'ye ulasilamadi ({IP}): {e}\nTV kapali veya agda degil olabilir.")
+    hatalar = []
+    for aday in _aday_ipler():
+        try:
+            sock, rest = ws_connect(aday, PORT, path)
+            IP = aday
+            _ip_hatirla(IP)
+            break
+        except (socket.timeout, OSError) as e:
+            hatalar.append(f"{aday}: {e}")
+    else:
+        sys.exit("TV'ye ulasilamadi (" + "; ".join(hatalar) + ")\n"
+                 "TV kapali veya agda degil olabilir.")
     ws = WS(sock, rest)
     msg = json.loads(ws.recv().decode())
     if msg.get("event") != "ms.channel.connect":
