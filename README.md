@@ -11,7 +11,7 @@ Bu depoda iki ayrı iş duruyor:
 
 1. **Kumanda** (bu belge) — TV'yi ağ üzerinden kontrol eden script ve paneller.
 2. **`tizen-iptv/`** — TV'nin kendisine kurulan IPTV uygulaması. Ayrı ve çok
-   daha büyük bir iş; kendi belgesi var: **[`tizen-iptv/OKUBENI.md`](tizen-iptv/OKUBENI.md)**.
+   daha büyük bir iş; kendi belgesi var: **[`tizen-iptv/README.md`](tizen-iptv/README.md)**.
    Mimari, ölçülen sınırlar, tuzaklar ve hata ayıklama yöntemleri orada.
 
 ## Dosyalar
